@@ -2,40 +2,86 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include "projectfunctions.h"
 
 int main(int argc, char **argv){
   char *source = NULL;
   char *destination = NULL;
-  char *cvalue = NULL;
-  int index;
+  char *timeTmp = NULL;
+  char *sizeTmp = NULL;
+  int programTime = 300;
+  int programSize = 20;
   int c;
 
   opterr = 0;
 
-  while ((c = getopt (argc, argv, "abc:")) != -1)
+  while ((c = getopt (argc, argv, "s:d:t:r:")) != -1)
     switch (c)
       {
-      case 'a':
-        aflag = 1;
+      case 's':
+        source = optarg;
         break;
-      case 'b':
-        bflag = 1;
+      case 'd':
+        destination = optarg;
         break;
-      case 'c':
-        cvalue = optarg;
+      case 't':
+        timeTmp = optarg;
+        break;
+      case 'r':
+        sizeTmp = optarg;
         break;
       case '?':
-        if (optopt == 'c')
-          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint (optopt))
+        switch(optopt)
+        {
+          case 's':
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            break;
+          case 'd':
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            break;
+        }
+        if (isprint (optopt))
           fprintf (stderr, "Unknown option `-%c'.\n", optopt);
         else
-          fprintf (stderr,
-                   "Unknown option character `\\x%x'.\n",
-                   optopt);
+          fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
         return 1;
       default:
         abort ();
       }
+      if(ifnumeric(timeTmp)){
+        programTime = atoi(timeTmp);
+      }
+      else{
+        fprintf(stderr,"Given time argument is string. Set default time.\n");
+      }
+      if(ifnumeric(sizeTmp)){
+        programTime = atoi(sizeTmp);
+      }
+      else{
+        fprintf(stderr,"Given size argument is string. Set default size.\n");
+      }
 
+      int fs, fd;
+      if(strcmp(source,destination) == 0){
+          fprintf(stderr,"Source and destination directory are the same.\n");
+          exit(EXIT_FAILURE);
+      }
+      fs = open (source, O_DIRECTORY, 666);
+      if(fs == -1){
+        perror("Error with source directory:");
+        exit(EXIT_FAILURE);
+      }
+
+      fd = open (destination, O_DIRECTORY, 666);
+      if(fd == -1){
+        perror("Error with destination directory:");
+        exit(EXIT_FAILURE);
+      }
+
+
+      exit(EXIT_SUCCESS);
 }
