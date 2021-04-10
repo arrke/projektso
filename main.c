@@ -16,10 +16,10 @@ int main(int argc, char **argv){
   int programTime = 300;
   int programSize = 20;
   int c;
-
+  int recursion = 0;
   opterr = 0;
 
-  while ((c = getopt (argc, argv, "s:d:t:r:")) != -1)
+  while ((c = getopt (argc, argv, "s:d:t:z:r")) != -1)
     switch (c)
       {
       case 's':
@@ -31,8 +31,11 @@ int main(int argc, char **argv){
       case 't':
         timeTmp = optarg;
         break;
-      case 'r':
+      case 'z':
         sizeTmp = optarg;
+        break;
+      case 'r':
+        recursion = 1;
         break;
       case '?':
         switch(optopt)
