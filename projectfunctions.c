@@ -78,7 +78,8 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
               j++;
             }
             else if(comparing < 0) {
-              copyingFunction(eps1[i]->d_name, entry_path_source, entry_path_destination, path_len_source, path_len_destination);
+              copyingFunction(eps1[i]->d_name, entry_path_source, entry_path_destination,
+                              path_len_source, path_len_destination);
               // funkcja kopiujaca plik z jednego folderu do drugiego
               // F1: ab -> F2 :aa
               //     ac -> F2 :ac
@@ -107,7 +108,8 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
               modificationTime = difftime(f1.st_mtime, f2.st_mtime);
               if (modificationTime > 0){
                   deletingFunction(eps2[j]->d_name,entry_path_destination,path_len_destination);
-                  copyingFunction(eps1[i]->d_name, entry_path_source, entry_path_destination, path_len_source, path_len_destination);
+                  copyingFunction(eps1[i]->d_name, entry_path_source, entry_path_destination,
+                                  path_len_source, path_len_destination);
                   fprintf(stdout, "Inny czas modyfikacji\n");
 
               }
@@ -130,7 +132,8 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
 
 
 
-void copyingFunction(char *file_source, char *entry_path_source, char * entry_path_destination, int path_len_source, int path_len_destination){
+void copyingFunction(char *file_source, char *entry_path_source, char * entry_path_destination,
+                    int path_len_source, int path_len_destination){
     strncpy (entry_path_source + path_len_source, eps1[i]->d_name,
             sizeof (entry_path_source) - path_len_source);
     strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
