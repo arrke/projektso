@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <dirent.h>
-
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 int ifnumeric(char *argument){
   char tmp[strlen(argument)];
@@ -69,12 +73,12 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
           {
             comparing = strcmp(eps1[i]->d_name, eps2[j]->d_name);
             if ( comparing > 0){
-              // funkcja usuwająca plik z drugiego folderu
+              deletingFunction(eps2[j]->d_name,entry_path_destination,path_len_destination);
               fprintf(stdout, "Usuwanie pliku\n");
               j++;
             }
             else if(comparing < 0) {
-
+              copyingFunction(eps1[i]->d_name, entry_path_source, entry_path_destination, path_len_source, path_len_destination);
               // funkcja kopiujaca plik z jednego folderu do drugiego
               // F1: ab -> F2 :aa
               //     ac -> F2 :ac
@@ -102,8 +106,8 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
               }
               modificationTime = difftime(f1.st_mtime, f2.st_mtime);
               if (modificationTime > 0){
-                  // funkcja usuwająca plik z drugiego folderu
-                  // funkcja kopiujaca plik z jednego folderu do drugiego
+                  deletingFunction(eps2[j]->d_name,entry_path_destination,path_len_destination);
+                  copyingFunction(eps1[i]->d_name, entry_path_source, entry_path_destination, path_len_source, path_len_destination);
                   fprintf(stdout, "Inny czas modyfikacji\n");
 
               }
@@ -122,4 +126,44 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
     }
   else
     perror ("Couldn't open the directory");
+}
+
+
+
+void copyingFunction(char *file_source, char *entry_path_source, char * entry_path_destination, int path_len_source, int path_len_destination){
+    strncpy (entry_path_source + path_len_source, eps1[i]->d_name,
+            sizeof (entry_path_source) - path_len_source);
+    strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
+            sizeof (entry_path_destination) - path_len_destination);
+    src_fd = open(entry_path_source, O_RDONLY);
+    dst_fd = open(entry_path_destination, O_CREAT | O_WRONLY);
+
+    while (1) {
+        err = read(src_fd, buffer, 4096);
+        if (err == -1) {
+            printf("Error reading file.\n");
+            exit(1);
+        }
+        n = err;
+
+        if (n == 0) break;
+
+        err = write(dst_fd, buffer, n);
+        if (err == -1) {
+            printf("Error writing to file.\n");
+            exit(1);
+        }
+    }
+
+    close(src_fd);
+    close(dst_fd);
+}
+
+void deletingFunction(char *file_to_delete,char *entry_path_destination, int path_len_destination){
+  strncpy (entry_path_destination + path_len_destination, file_to_delete,
+            sizeof (entry_path_destination) - path_len_destination);
+  if ( remove (entry_path_destination) == -1) {
+      perror("Removing error:");
+      exit(EXIT_FAILURE);
+  }
 }
