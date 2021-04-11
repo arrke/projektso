@@ -161,7 +161,9 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
             }
           }
           while(j < n_destination){
-            // funkcja usuwająca plik z drugiego folderu
+            strncpy (entry_path_destination + path_len_destination, eps2[j]->d_name,
+                    sizeof (entry_path_destination) - path_len_destination);
+            deletingFunction(entry_path_destination);
             ++j;
           }
       }
