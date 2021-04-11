@@ -7,6 +7,10 @@
 #include <string.h>
 #include <errno.h>
 #include "projectfunctions.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <syslog.h>
+
 
 int main(int argc, char **argv){
   char *source = NULL;
@@ -15,8 +19,9 @@ int main(int argc, char **argv){
   char *sizeTmp = NULL;
   int programTime = 300;
   int programSize = 20;
-  int c;
   int recursion = 0;
+
+  int c;
   opterr = 0;
 
   while ((c = getopt (argc, argv, "s:d:t:z:r")) != -1)
@@ -55,18 +60,17 @@ int main(int argc, char **argv){
       default:
         abort ();
       }
-      if(ifnumeric(timeTmp)){
-        programTime = atoi(timeTmp);
+      if(ifnumeric (timeTmp) ){
+        programTime = atoi (timeTmp);
       }
-      else{
+      else
         fprintf(stderr,"Given time argument is string. Set default time.\n");
+
+      if (ifnumeric (sizeTmp) ){
+        programTime = atoi (sizeTmp);
       }
-      if(ifnumeric(sizeTmp)){
-        programTime = atoi(sizeTmp);
-      }
-      else{
+      else
         fprintf(stderr,"Given size argument is string. Set default size.\n");
-      }
 
       int fs, fd;
       if(strcmp(source,destination) == 0){
@@ -74,17 +78,58 @@ int main(int argc, char **argv){
           exit(EXIT_FAILURE);
       }
       fs = open (source, O_DIRECTORY, 666);
-      if(fs == -1){
+      if (fs == -1) {
         perror("Error with source directory:");
         exit(EXIT_FAILURE);
       }
 
       fd = open (destination, O_DIRECTORY, 666);
-      if(fd == -1){
+      if (fd == -1) {
         perror("Error with destination directory:");
         exit(EXIT_FAILURE);
       }
+      close(fd);
+      close(fs);
+      // Po podaniu prawidłowych danych przez użytkownika program zamienia się w demona
+      pid_t pid, sid;
 
+      pid = fork();
+      if (pid < 0) {
+          exit(EXIT_FAILURE);
+      }
+
+      if (pid > 0) {
+          exit(EXIT_SUCCESS);
+      }
+
+      umask(0);
+
+      sid = setsid();
+      if (sid < 0) {
+              exit(EXIT_FAILURE);
+      }
+
+      if ((chdir("/")) < 0) {
+              exit(EXIT_FAILURE);
+      }
+
+      close(STDIN_FILENO);
+      close(STDOUT_FILENO);
+      close(STDERR_FILENO);
+
+
+      while (1) {
+          pid_t pid1;
+          pid1=fork();
+
+          if (pid1 == 0){
+            browsingTheDirectories(source, destination, recursion, programSize);
+          }
+          else if (pid1<0)
+              exit(EXIT_FAILURE);
+
+          sleep(programTime);
+      }
 
       exit(EXIT_SUCCESS);
 }
