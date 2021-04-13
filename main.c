@@ -11,7 +11,10 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include <signal.h>
-int flag = 0;
+#include <syslog.h>
+
+typedef void (*sighandler_t)(int);
+volatile int flag = 0;
 void handler(int signum){
    if(signum == SIGUSR1)
    {
@@ -22,19 +25,21 @@ void handler(int signum){
 }
 
 int main(int argc, char **argv){
+  setlogmask ( LOG_UPTO (LOG_NOTICE) );
+
+  openlog ( "Demon synchronizujący", LOG_USER, LOG_LOCAL1 );
   if (signal(SIGUSR1, handler) == SIG_ERR){
     perror("Error with signal: ");
   }
+  syslog ( LOG_NOTICE, "Program rozpoczety" );
   char *source = NULL;
   char *destination = NULL;
-  char *timeTmp = NULL;
-  char *sizeTmp = NULL;
-  int programTime = 0;
-  int programSize = 0;
+  int programTime = 20;
+  int programSize = 300;
   int recursion = 0;
   int c;
   opterr = 0;
-  while ((c = getopt (argc, argv, "rs:d:t:z:")) != -1)
+  while ((c = getopt (argc, argv, "Rs:d:T:z:")) != -1)
     switch (c)
       {
       case 's':
@@ -43,13 +48,13 @@ int main(int argc, char **argv){
       case 'd':
         destination = optarg;
         break;
-      case 't':
-        timeTmp = optarg;
+      case 'T':
+        programTime = atoi (optarg);
         break;
-      case 'z':
-        sizeTmp = optarg;
+      case 'S':
+        programSize = atoi (optarg);
         break;
-      case 'r':
+      case 'R':
         recursion = 1;
         break;
       case '?':
@@ -72,19 +77,7 @@ int main(int argc, char **argv){
       default:
         abort ();
       }
-      if(timeTmp == NULL){
-        programTime = 300;
-      }
-      else{
-        programTime = atoi (timeTmp);
-      }
 
-      if(timeTmp == NULL){
-        programSize = 20;
-      }
-      else {
-        programSize = atoi (sizeTmp);
-      }
 
       int fs, fd;
       if(strcmp(source,destination) == 0){
@@ -102,8 +95,6 @@ int main(int argc, char **argv){
         perror("Error with destination directory:");
         exit(EXIT_FAILURE);
       }
-      close(fd);
-      close(fs);
       // Po podaniu prawidłowych danych przez użytkownika program zamienia się w demona
       pid_t pid, sid;
 
@@ -126,12 +117,17 @@ int main(int argc, char **argv){
       if ((chdir("/")) < 0) {
               exit(EXIT_FAILURE);
       }
-
+      syslog ( LOG_NOTICE, "Zamiana w demona." );
       while (1) {
-          sleep(programTime);
-          fprintf(stdout,"Wybudzenie demona\n\n");
+          syslog ( LOG_NOTICE, "Uśpienie demona." );
+          int i=0;
+          while(i<=programTime || flag != 1){
+            sleep(1);
+            i++;
+          }
+          syslog ( LOG_NOTICE, "Obudzenie demona." );
           browsingTheDirectories(source, destination, recursion, programSize);
-
+          if(flag == 1) flag = 0;
       }
 
       exit(EXIT_SUCCESS);

@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <syslog.h>
 
 // int ifnumeric(char *argument){
 //   char tmp[strlen(argument)];
@@ -38,7 +39,7 @@ static int one1(const struct dirent *unused)
 
 
   void copyingFunction(char *entry_path_source, char *entry_path_destination){
-      fprintf(stdout, "Kopiowanie pliku:%s do %s\n",entry_path_source,entry_path_destination);
+      syslog ( LOG_NOTICE,"Kopiowanie pliku:%s do %s",entry_path_source,entry_path_destination);
       int src_fd, dst_fd, n, err;
       unsigned char buffer[1024];
       char * src_path, dst_path;
@@ -49,8 +50,8 @@ static int one1(const struct dirent *unused)
       while (1) {
           err = read(src_fd, buffer, 4096);
           if (err == -1) {
-              printf("Error reading file.\n");
-              exit(1);
+              perror("Copy function. Read error:");
+              exit(EXIT_FAILURE);
           }
           n = err;
 
@@ -58,8 +59,8 @@ static int one1(const struct dirent *unused)
 
           err = write(dst_fd, buffer, n);
           if (err == -1) {
-              printf("Error writing to file.\n");
-              exit(1);
+            perror("Copy function. Write error:");
+            exit(EXIT_FAILURE);
           }
       }
 
@@ -68,7 +69,7 @@ static int one1(const struct dirent *unused)
   }
 
   void deletingFunction(char *entry_path){
-    fprintf(stdout, "Usuwanie pliku: %s\n", entry_path);
+    syslog ( LOG_NOTICE, "Usuwanie pliku: %s\n", entry_path);
     if ( remove (entry_path) == -1) {
       int e = errno;
       switch (e) {
@@ -98,8 +99,11 @@ static int one1(const struct dirent *unused)
             perror ("Couldn't open the directory");
           }
 
-          if ( remove (entry_path) == -1)
-              perror("97 linijka: ");
+          if ( remove (entry_path) == -1){
+              perror("Removing error:");
+              exit(EXIT_FAILURE);
+          }
+
         }
         break;
         default:
@@ -111,12 +115,12 @@ static int one1(const struct dirent *unused)
   }
 
   void browsingTheDirectories(char *source, char *destination, int recursion, int size){
-      struct dirent **eps1 = NULL, **eps2= NULL;
-      int n_source, n_destination;
-      char entry_path_source[PATH_MAX + 1];
-      char entry_path_destination[PATH_MAX + 1];
-      size_t path_len_destination;
-      size_t path_len_source;
+        struct dirent **eps1 = NULL, **eps2= NULL;
+        int n_source, n_destination;
+        char entry_path_source[PATH_MAX + 1];
+        char entry_path_destination[PATH_MAX + 1];
+        size_t path_len_destination;
+        size_t path_len_source;
 
         strncpy (entry_path_source, source, sizeof (entry_path_source));
         strncpy (entry_path_destination, destination, sizeof (entry_path_destination));
@@ -130,10 +134,33 @@ static int one1(const struct dirent *unused)
 
         n_source = scandir (source, &eps1, one1, alphasort);
         n_destination = scandir (destination, &eps2, one1, alphasort);
+
+        if(n_source == -1){
+          perror("N_source problem:");
+          exit(EXIT_FAILURE);
+        }
+
+        if(n_destination == -1){
+          perror("N_destination problem:");
+          exit(EXIT_FAILURE);
+        }
+
+        int i = 2;
+        if(n_destination == 0)
+        {
+
+          while(i < n_source){
+            strncpy (entry_path_source + path_len_source, eps1[i]->d_name,
+                    sizeof (entry_path_source) - path_len_source);
+            strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
+                    sizeof (entry_path_destination) - path_len_destination);
+            copyingFunction(entry_path_source, entry_path_destination);
+          }
+        }
         if (n_source >= 0)
         {
-          int i = 2, j = 2, comparing;
-
+          int j = 2, comparing;
+            syslog ( LOG_NOTICE,"Przejrzenie obydwu katalogów: %s oraz %s", entry_path_source, entry_path_destination);
             while(i < n_source){
               comparing = strcmp(eps1[i]->d_name, eps2[j]->d_name);
               strncpy (entry_path_source + path_len_source, eps1[i]->d_name,
@@ -155,11 +182,11 @@ static int one1(const struct dirent *unused)
                     strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
                             sizeof (entry_path_destination) - path_len_destination);
                     status = mkdir(entry_path_destination, S_IRWXU | S_IRWXG | S_IROTH);
-                    fprintf(stdout,"Tworzenie katalogu, początek funkcji rekurencyjnej");
                     if(status == -1){
                       int e = errno;
                       switch (e) {
                         case EEXIST:
+                          syslog ( LOG_NOTICE,"Kopiowanie katalogu z %s, do %s",entry_path_source,entry_path_destination);
                           browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
                           i++;
                           break;
@@ -169,10 +196,9 @@ static int one1(const struct dirent *unused)
                           break;
                       }
                     }
-                    fprintf(stdout, "Kopiowanie folderu %s: \n", eps1[i]->d_name);
                   }
                   else{
-                    fprintf(stdout, "Rekurencja\n");
+                    syslog ( LOG_NOTICE,"Kopiowanie katalogu z %s, do %s",entry_path_source,entry_path_destination);
                     browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
                     i++;
                     j++;
@@ -185,7 +211,6 @@ static int one1(const struct dirent *unused)
 
                 if ( comparing > 0){
                   deletingFunction(entry_path_destination);
-                  fprintf(stdout, "Usuwanie pliku\n");
                   j++;
                 }
                 else if(comparing < 0) {
@@ -214,15 +239,15 @@ static int one1(const struct dirent *unused)
                   }
                   modificationTime = difftime(f1.st_mtime, f2.st_mtime);
                   if (modificationTime > 0){
+                    syslog ( LOG_NOTICE,"Znaleziono pliki o tej samej nazwie, lecz o innym czasie modyfikacji!. Pliki to %s, %s",entry_path_source,entry_path_destination);
                       deletingFunction(entry_path_destination);
                       strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
                               sizeof (entry_path_destination) - path_len_destination);
                       copyingFunction(entry_path_source, entry_path_destination);
-                      fprintf(stdout, "Inny czas modyfikacji\n");
 
                   }
                   else{
-                    fprintf(stdout, "ten sam czas modyfikacji. nic nie rób\n");
+                    syslog ( LOG_NOTICE,"Znaleziono pliki o tej samej nazwie i tym samym czasie modyfikacji!. Pliki to %s, %s",entry_path_source,entry_path_destination);
                   }
                   ++i;
                   ++j;
@@ -238,14 +263,4 @@ static int one1(const struct dirent *unused)
         }
       else
        perror ("Couldn't open the directory");
-  }
-
-
-  void sleep_or_signal(int programTime, int flag)
-  {
-    int i=0;
-    while(i<=programTime || flag != 1){
-      sleep(1);
-      i++;
-    }
   }
