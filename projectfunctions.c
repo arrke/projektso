@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <syslog.h>
+#include <sys/sendfile.h>
 
 // int ifnumeric(char *argument){
 //   char tmp[strlen(argument)];
@@ -37,82 +38,131 @@ static int one1(const struct dirent *unused)
   return 1;
 }
 
+void bigFileCopyingFunction(char *entry_path_source, char *entry_path_destination){
+  syslog ( LOG_NOTICE,"Kopiowanie dużego pliku:%s do %s poprzez funkcję sendfile",entry_path_source,entry_path_destination);
+  int source_fd;
+  int destination_fd;
+  struct stat stat_buf;
+  off_t offset = 0;
 
-  void copyingFunction(char *entry_path_source, char *entry_path_destination){
-      syslog ( LOG_NOTICE,"Kopiowanie pliku:%s do %s",entry_path_source,entry_path_destination);
-      int src_fd, dst_fd, n, err;
-      unsigned char buffer[1024];
-      char * src_path, dst_path;
-
-      src_fd = open(entry_path_source, O_RDONLY, S_IRWXU | S_IRWXG | S_IROTH);
-      dst_fd = open(entry_path_destination, O_CREAT , S_IRWXU | S_IRWXG | S_IROTH);
-
-      while (1) {
-          err = read(src_fd, buffer, 4096);
-          if (err == -1) {
-              perror("Copy function. Read error:");
-              exit(EXIT_FAILURE);
-          }
-          n = err;
-
-          if (n == 0) break;
-
-          err = write(dst_fd, buffer, n);
-          if (err == -1) {
-            perror("Copy function. Write error:");
-            exit(EXIT_FAILURE);
-          }
-      }
-
-      close(src_fd);
-      close(dst_fd);
+  source_fd = open (entry_path_source, O_RDONLY, S_IRWXU | S_IRWXG | S_IROTH);
+  if(source_fd == -1){
+    perror("Source_fd error:");
+    exit(EXIT_FAILURE);
+  }
+  fstat (source_fd, &stat_buf);
+  destination_fd = open (entry_path_destination, O_WRONLY | O_CREAT, stat_buf.st_mode);
+  if(destination_fd == -1){
+    perror("Destination_fd error:");
+    exit(EXIT_FAILURE);
+  }
+  if( sendfile (destination_fd, source_fd, &offset, stat_buf.st_size) == -1){
+    perror("Sendfile error:");
+    exit(EXIT_FAILURE);
   }
 
-  void deletingFunction(char *entry_path){
-    syslog ( LOG_NOTICE, "Usuwanie pliku: %s\n", entry_path);
-    if ( remove (entry_path) == -1) {
-      int e = errno;
-      switch (e) {
-        case ENOTEMPTY:{
-          struct dirent **rem1;
-          int n_removing;
-          char remove_path[PATH_MAX + 1];
-          size_t path_len;
+  close (source_fd);
+  close (destination_fd);
+}
 
-          strncpy (remove_path, entry_path, sizeof (remove_path));
-          path_len = strlen (remove_path);
-          if(addSlash(remove_path,path_len))
-              ++path_len;
+void smallFilecopyingFunction(char *entry_path_source, char *entry_path_destination){
+    syslog ( LOG_NOTICE,"Kopiowanie małego pliku:%s do %s poprzez read/write",entry_path_source,entry_path_destination);
+    int src_fd, dst_fd, n, b_count;
+    unsigned char buffer[4096];
+    char * src_path, dst_path;
 
-          n_removing = scandir (remove_path, &rem1, one1, alphasort);
-          if (n_removing >= 0)
-          {
-            int i=2;
-            while(i < n_removing){
-              strncpy (remove_path + path_len, rem1[i]->d_name,
-                      sizeof (remove_path) - path_len);
-              deletingFunction(remove_path);
-              ++i;
-            }
-          }
-          else{
-            perror ("Couldn't open the directory");
-          }
+    src_fd = open(entry_path_source, O_RDONLY, S_IRWXU | S_IRWXG | S_IROTH);
+    if(src_fd == -1){
+      perror("Src_fd error:");
+      exit(EXIT_FAILURE);
+    }
+    dst_fd = open(entry_path_destination, O_WRONLY | O_CREAT , S_IRWXU | S_IRWXG | S_IROTH);
+    if(dst_fd == -1){
+      perror("Dst_fd error:");
+      exit(EXIT_FAILURE);
+    }
 
-          if ( remove (entry_path) == -1){
-              perror("Removing error:");
-              exit(EXIT_FAILURE);
-          }
-
+    while (1) {
+        b_count = read(src_fd, buffer, 4096);
+        if (b_count == -1) {
+            perror("Copy function. Read error:");
+            exit(EXIT_FAILURE);
         }
-        break;
-        default:
-          perror("Removing error:");
+        n = b_count;
+
+        if (n == 0) break;
+
+        b_count = write(dst_fd, buffer, n);
+        if (b_count == -1) {
+          perror("Copy function. Write error:");
           exit(EXIT_FAILURE);
-        break;
+        }
+    }
+
+    close (src_fd);
+    close (dst_fd);
+
+}
+
+void copyingFunction(char *entry_path_source, char *entry_path_destination, int size){
+  struct stat f_copy;
+  if (stat( (entry_path_source), &f_copy) == -1) {
+      perror("Stat file from copying function error:");
+      exit(EXIT_FAILURE);
+  }
+  if( (f_copy.st_size) >= size)
+    bigFileCopyingFunction(entry_path_source, entry_path_destination);
+  else
+    smallFilecopyingFunction(entry_path_source, entry_path_destination);
+}
+
+void deletingFunction(char *entry_path){
+  syslog ( LOG_NOTICE, "Usuwanie pliku: %s\n", entry_path);
+  if ( remove (entry_path) == -1) {
+    int e = errno;
+    switch (e) {
+      case ENOTEMPTY:{
+        syslog ( LOG_NOTICE, "Usuwany folder: %s nie jest pusty, usuwanie plików znajdujących się w folderze.", entry_path);
+        struct dirent **rem1;
+        int n_removing;
+        char remove_path[PATH_MAX + 1];
+        size_t path_len;
+
+        strncpy (remove_path, entry_path, sizeof (remove_path));
+        path_len = strlen (remove_path);
+        if(addSlash(remove_path,path_len))
+            ++path_len;
+
+        n_removing = scandir (remove_path, &rem1, one1, alphasort);
+        if (n_removing >= 0)
+        {
+          int i=2;
+          while(i < n_removing){
+            strncpy (remove_path + path_len, rem1[i]->d_name,
+                    sizeof (remove_path) - path_len);
+            deletingFunction(remove_path);
+            ++i;
+          }
+        }
+        else{
+          perror ("Couldn't open the directory");
+        }
+
+        if ( remove (entry_path) == -1){
+            perror("Removing error:");
+            exit(EXIT_FAILURE);
+        }
+
       }
+      break;
+      default:
+        perror("Removing error:");
+        exit(EXIT_FAILURE);
+      break;
     }
   }
+}
+
 
   void browsingTheDirectories(char *source, char *destination, int recursion, int size){
         struct dirent **eps1 = NULL, **eps2= NULL;
@@ -145,7 +195,7 @@ static int one1(const struct dirent *unused)
           exit(EXIT_FAILURE);
         }
 
-        int i = 2;
+        int i = 2, j = 2, comparing;
         if(n_destination == 0)
         {
 
@@ -154,12 +204,13 @@ static int one1(const struct dirent *unused)
                     sizeof (entry_path_source) - path_len_source);
             strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
                     sizeof (entry_path_destination) - path_len_destination);
-            copyingFunction(entry_path_source, entry_path_destination);
+            copyingFunction(entry_path_source, entry_path_destination, size);
+            i++;
           }
         }
-        if (n_source >= 0)
+        else if (n_source >= 0)
         {
-          int j = 2, comparing;
+
             syslog ( LOG_NOTICE,"Przejrzenie obydwu katalogów: %s oraz %s", entry_path_source, entry_path_destination);
             while(i < n_source){
               comparing = strcmp(eps1[i]->d_name, eps2[j]->d_name);
@@ -216,7 +267,7 @@ static int one1(const struct dirent *unused)
                 else if(comparing < 0) {
                   strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
                           sizeof (entry_path_destination) - path_len_destination);
-                  copyingFunction(entry_path_source, entry_path_destination);
+                  copyingFunction(entry_path_source, entry_path_destination, size);
                   // funkcja kopiujaca plik z jednego folderu do drugiego
                   // F1: ab -> F2 :aa
                   //     ac -> F2 :ac
@@ -243,7 +294,7 @@ static int one1(const struct dirent *unused)
                       deletingFunction(entry_path_destination);
                       strncpy (entry_path_destination + path_len_destination, eps1[i]->d_name,
                               sizeof (entry_path_destination) - path_len_destination);
-                      copyingFunction(entry_path_source, entry_path_destination);
+                      copyingFunction(entry_path_source, entry_path_destination, size);
 
                   }
                   else{
@@ -264,3 +315,7 @@ static int one1(const struct dirent *unused)
       else
        perror ("Couldn't open the directory");
   }
+
+void man_projekt_program(){
+  fprintf(stdout, "\nDemon synchronizyjący dwa podkatalogi. przyjmowane argumenty:\n-s [argument] - podanie demonowi ścieżki źródłowej,\n-d [argument] - podanie demonowi ścieżki docelowej,\n-R - opcjonalny argument do dzialania na podkatalogach,\n-T [argument] - opcjonalny argument zmieniający czas, co jaki czas demon ma się budzić,\n-S [argument] - opcjonalny argument ustawiający rozmiar, który ma odróżniać pliki duże od małych,\n-h - wyświetlenie pomocy,\n\n");
+}

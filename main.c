@@ -12,13 +12,13 @@
 #include <syslog.h>
 #include <signal.h>
 #include <syslog.h>
-
+#include <limits.h>
 typedef void (*sighandler_t)(int);
 volatile int flag = 0;
 void handler(int signum){
    if(signum == SIGUSR1)
    {
-     printf("signal!\n");
+     syslog ( LOG_NOTICE, "Wybudzenie demona poprzez sygnał.");
      flag = 1;
    }
 
@@ -35,13 +35,18 @@ int main(int argc, char **argv){
   char *source = NULL;
   char *destination = NULL;
   int programTime = 20;
-  int programSize = 300;
+  int programSize = INT_MAX;
   int recursion = 0;
   int c;
   opterr = 0;
-  while ((c = getopt (argc, argv, "Rs:d:T:z:")) != -1)
+  while ((c = getopt (argc, argv, "Rs:d:T:S:h")) != -1)
     switch (c)
       {
+      case 'h':
+        man_projekt_program();
+        exit(EXIT_FAILURE);
+        break;
+      break;
       case 's':
         source = optarg;
         break;
@@ -121,13 +126,15 @@ int main(int argc, char **argv){
       while (1) {
           syslog ( LOG_NOTICE, "Uśpienie demona." );
           int i=0;
-          while(i<=programTime || flag != 1){
+          while(i<=programTime && !flag){
             sleep(1);
             i++;
           }
-          syslog ( LOG_NOTICE, "Obudzenie demona." );
+          if (!flag){
+            syslog ( LOG_NOTICE, "Wybudzenie demona po %d s.", programTime);
+          }
           browsingTheDirectories(source, destination, recursion, programSize);
-          if(flag == 1) flag = 0;
+          if(flag) flag = 0;
       }
 
       exit(EXIT_SUCCESS);
