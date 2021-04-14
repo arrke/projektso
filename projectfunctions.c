@@ -237,7 +237,7 @@ void deletingFunction(char *entry_path){
                       int e = errno;
                       switch (e) {
                         case EEXIST:
-                          syslog ( LOG_NOTICE,"Kopiowanie katalogu z %s, do %s",entry_path_source,entry_path_destination);
+                          syslog ( LOG_NOTICE,"Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.",entry_path_source,entry_path_destination);
                           browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
                           i++;
                           break;
@@ -249,7 +249,7 @@ void deletingFunction(char *entry_path){
                     }
                   }
                   else{
-                    syslog ( LOG_NOTICE,"Kopiowanie katalogu z %s, do %s",entry_path_source,entry_path_destination);
+                    syslog ( LOG_NOTICE,"Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.",entry_path_source,entry_path_destination);
                     browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
                     i++;
                     j++;
@@ -317,5 +317,6 @@ void deletingFunction(char *entry_path){
   }
 
 void man_projekt_program(){
-  fprintf(stdout, "\nDemon synchronizyjący dwa podkatalogi. przyjmowane argumenty:\n-s [argument] - podanie demonowi ścieżki źródłowej,\n-d [argument] - podanie demonowi ścieżki docelowej,\n-R - opcjonalny argument do dzialania na podkatalogach,\n-T [argument] - opcjonalny argument zmieniający czas, co jaki czas demon ma się budzić,\n-S [argument] - opcjonalny argument ustawiający rozmiar, który ma odróżniać pliki duże od małych,\n-h - wyświetlenie pomocy,\n\n");
+    syslog ( LOG_NOTICE, "Wywołanie pomocy");
+    fprintf(stdout, "\nDemon synchronizyjący dwa podkatalogi. przyjmowane argumenty:\n-s [argument] - podanie demonowi ścieżki źródłowej,\n-d [argument] - podanie demonowi ścieżki docelowej,\n-R - opcjonalny argument do dzialania na podkatalogach,\n-T [argument] - opcjonalny argument zmieniający czas, co jaki czas demon ma się budzić,\n-S [argument] - opcjonalny argument ustawiający rozmiar, który ma odróżniać pliki duże od małych,\n-h - wyświetlenie pomocy,\n\n");
 }
