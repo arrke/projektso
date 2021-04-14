@@ -15,19 +15,19 @@
 #include <limits.h>
 typedef void (*sighandler_t)(int);
 volatile int flag = 0;
+
 void handler(int signum){
    if(signum == SIGUSR1)
    {
-     syslog ( LOG_NOTICE, "Wybudzenie demona poprzez sygnał.");
+     syslog ( LOG_NOTICE, "Wybudzenie demona poprzez sygnał SIGUSR1.");
      flag = 1;
    }
-
 }
 
 int main(int argc, char **argv){
   setlogmask ( LOG_UPTO (LOG_NOTICE) );
 
-  openlog ( "Demon synchronizujący", LOG_USER, LOG_LOCAL1 );
+  openlog ( "PROJEKT: Demon synchronizujący", LOG_USER, LOG_LOCAL1 );
   if (signal(SIGUSR1, handler) == SIG_ERR){
     perror("Error with signal: ");
   }
