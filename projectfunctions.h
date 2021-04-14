@@ -3,7 +3,6 @@
 #include "projectfunctions.h"
 
 
-//int ifnumeric(char *argument);
 int addSlash(char *entry_path, int path_len);
 void bigFileCopyingFunction(char *entry_path_source, char *entry_path_destination);
 void smallFilecopyingFunction(char *entry_path_source, char *entry_path_destination);
