@@ -83,7 +83,9 @@ int main(int argc, char **argv){
         abort ();
       }
 
-
+      for( int i = 0 ; i < 1024*1024; i++){
+        close (i);
+      }
       int fs, fd;
       if(strcmp(source,destination) == 0){
           fprintf(stderr,"Source and destination directory are the same.\n");
