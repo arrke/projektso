@@ -220,7 +220,7 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
               switch (e)
               {
               case EEXIST:
-                syslog(LOG_NOTICE, "21Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.", entry_path_source, entry_path_destination);
+                syslog(LOG_NOTICE, "Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.", entry_path_source, entry_path_destination);
                 browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
                 i++;
                 break;
@@ -314,32 +314,34 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
               sizeof(entry_path_destination) - path_len_destination);
       if (eps1[i]->d_type == DT_DIR)
       {
-        strncpy(entry_path_destination + path_len_destination, eps1[i]->d_name,
-                sizeof(entry_path_destination) - path_len_destination);
-        status = mkdir(entry_path_destination, 0700);
-        if (status == -1)
-        {
-          int e = errno;
-          switch (e)
+        if(recursion){
+          strncpy(entry_path_destination + path_len_destination, eps1[i]->d_name,
+                  sizeof(entry_path_destination) - path_len_destination);
+          status = mkdir(entry_path_destination, 0700);
+          if (status == -1)
           {
-          case EEXIST:
-            syslog(LOG_NOTICE, "21Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.", entry_path_source, entry_path_destination);
+            int e = errno;
+            switch (e)
+            {
+            case EEXIST:
+              syslog(LOG_NOTICE, "Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.", entry_path_source, entry_path_destination);
+              browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
+              i++;
+              break;
+            default:
+              perror("Error with mkdir:");
+              exit(EXIT_FAILURE);
+              break;
+            }
+          }
+          else
+          {
             browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
             i++;
-            break;
-          default:
-            perror("Error with mkdir:");
-            exit(EXIT_FAILURE);
-            break;
           }
         }
-        else
-        {
-          browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
-          i++;
-        }
       }
-      else
+      else if (eps1[i]->d_type == DT_REG)
         copyingFunction(entry_path_source, entry_path_destination, size);
       ++i;
     }
