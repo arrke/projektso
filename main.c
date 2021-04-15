@@ -34,19 +34,14 @@ int main(int argc, char **argv){
   syslog ( LOG_NOTICE, "Program rozpoczety" );
   char *source = NULL;
   char *destination = NULL;
-  int programTime = 20;
+  int programTime = 300;
   int programSize = INT_MAX;
   int recursion = 0;
   int c;
   opterr = 0;
-  while ((c = getopt (argc, argv, "Rs:d:T:S:h")) != -1)
+  while ((c = getopt (argc, argv, "s:d:T:S:Rh")) != -1)
     switch (c)
       {
-      case 'h':
-        man_projekt_program();
-        exit(EXIT_FAILURE);
-        break;
-      break;
       case 's':
         source = optarg;
         break;
@@ -78,7 +73,10 @@ int main(int argc, char **argv){
           fprintf (stderr, "Unknown option `-%c'.\n", optopt);
         else
           fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
-        return 1;
+        case 'h':
+          man_projekt_program();
+          return 0;
+          break;
       default:
         abort ();
       }
