@@ -192,48 +192,6 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
 
   int i = 2, j = 2, comparing, status;
 
-  if (n_destination == 2)
-  {
-    while (i < n_source)
-    {
-      strncpy(entry_path_source + path_len_source, eps1[i]->d_name,
-              sizeof(entry_path_source) - path_len_source);
-      strncpy(entry_path_destination + path_len_destination, eps1[i]->d_name,
-              sizeof(entry_path_destination) - path_len_destination);
-      if (eps1[i]->d_type == DT_DIR)
-      {
-        strncpy(entry_path_destination + path_len_destination, eps1[i]->d_name,
-                sizeof(entry_path_destination) - path_len_destination);
-        status = mkdir(entry_path_destination, 0700);
-        if (status == -1)
-        {
-          int e = errno;
-          switch (e)
-          {
-          case EEXIST:
-            syslog(LOG_NOTICE, "21Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.", entry_path_source, entry_path_destination);
-            browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
-            i++;
-            break;
-          default:
-            perror("Error with mkdir:");
-            exit(EXIT_FAILURE);
-            break;
-          }
-        }
-        else
-        {
-          browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
-          i++;
-        }
-      }
-      else
-        copyingFunction(entry_path_source, entry_path_destination, size);
-      ++i;
-    }
-    return;
-  }
-
   if (n_source >= 0)
   {
 
@@ -347,6 +305,43 @@ void browsingTheDirectories(char *source, char *destination, int recursion, int 
           ++j;
         }
       }
+    }
+    while (i < n_source)
+    {
+      strncpy(entry_path_source + path_len_source, eps1[i]->d_name,
+              sizeof(entry_path_source) - path_len_source);
+      strncpy(entry_path_destination + path_len_destination, eps1[i]->d_name,
+              sizeof(entry_path_destination) - path_len_destination);
+      if (eps1[i]->d_type == DT_DIR)
+      {
+        strncpy(entry_path_destination + path_len_destination, eps1[i]->d_name,
+                sizeof(entry_path_destination) - path_len_destination);
+        status = mkdir(entry_path_destination, 0700);
+        if (status == -1)
+        {
+          int e = errno;
+          switch (e)
+          {
+          case EEXIST:
+            syslog(LOG_NOTICE, "21Wejście do katalogów: %s, %s, poprzez funkcję rekurencyjną.", entry_path_source, entry_path_destination);
+            browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
+            i++;
+            break;
+          default:
+            perror("Error with mkdir:");
+            exit(EXIT_FAILURE);
+            break;
+          }
+        }
+        else
+        {
+          browsingTheDirectories(entry_path_source, entry_path_destination, recursion, size);
+          i++;
+        }
+      }
+      else
+        copyingFunction(entry_path_source, entry_path_destination, size);
+      ++i;
     }
   }
   else
